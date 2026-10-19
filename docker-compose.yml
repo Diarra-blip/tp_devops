@@ -1,0 +1,40 @@
+services:
+  database:
+    build: ./database
+    container_name: postgres-db
+    networks:
+      - app-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=db
+      - POSTGRES_USER=usr
+      - POSTGRES_PASSWORD=pwd
+    restart: always
+
+  backend:
+    build: ./simple-api
+    container_name: backend-api
+    networks:
+      - app-network
+    depends_on:
+      - database
+    restart: always
+
+  httpd:
+    build: ./httpd
+    container_name: httpd-server
+    networks:
+      - app-network
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
