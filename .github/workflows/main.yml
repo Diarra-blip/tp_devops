@@ -9,8 +9,10 @@ jobs:
   test-backend:
     runs-on: ubuntu-24.04
     steps:
-      # récupère le code du repo
+      # récupère le code du repo (historique complet, requis par Sonar)
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # installe le JDK 21
       - name: Set up JDK 21
@@ -23,9 +25,20 @@ jobs:
       - name: Build and test with Maven
         run: mvn clean verify --file ./simple-api/pom.xml
 
+      # analyse de qualité de code avec SonarCloud (quality gate)
+      - name: SonarCloud analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          mvn -B verify sonar:sonar
+          -Dsonar.projectKey=Diarra-blip_tp_devops
+          -Dsonar.organization=diarra-blip
+          -Dsonar.host.url=https://sonarcloud.io
+          --file ./simple-api/pom.xml
+
   # construit et publie les images Docker
   build-and-push-docker-image:
-    # ne s'exécute que si les tests passent (question 2-3)
+    # ne s'exécute que si les tests passent
     needs: test-backend
     runs-on: ubuntu-24.04
     steps:
