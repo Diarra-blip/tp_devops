@@ -1,0 +1,24 @@
+name: CI devops 2025
+on:
+  # lance le pipeline sur main et develop
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-24.04
+    steps:
+      # récupère le code du repo
+      - uses: actions/checkout@v4
+
+      # installe le JDK 21
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # compile et lance les tests (unitaires + intégration)
+      - name: Build and test with Maven
+        run: mvn clean verify --file ./simple-api/pom.xml
