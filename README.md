@@ -43,3 +43,62 @@ Les services communiquent via un réseau bridge personnalisé (`app-network`) et
 Stocker les images sur un registre en ligne (comme Docker Hub) facilite le partage au sein d'une équipe, permet un déploiement rapide sur d'autres environnements (serveurs de test, cloud ou production) et assure le suivi versionné des différentes versions de l'application.
 
 This project is now mine
+
+---
+
+# TD2 / TP2 : GitHub Actions (CI/CD)
+
+## TD2 : prise en main de Git/GitHub
+
+- Création d'une clé SSH (`ssh-keygen -t rsa -b 4096`) et ajout de la clé publique dans GitHub (Settings > SSH and GPG keys), pour cloner et pousser sans mot de passe.
+- Clone du dépôt en SSH : `git clone git@github.com:Diarra-blip/tp_devops.git`.
+- Cycle de base : `git add .`, `git commit -m "..."`, `git push origin main`. La branche par défaut s'appelle `main` (et non `master` comme dans le sujet).
+- Règle de protection de branche sur `main` (Settings > Branches), pour empêcher la suppression de la branche et les `push --force`.
+
+## TP2 : pipelines CI/CD
+
+Les pipelines sont dans `.github/workflows/` et séparés en deux fichiers.
+
+### `ci.yml` : intégration continue (CI)
+
+Déclenché sur `push` (branches `main` et `develop`) et sur `pull_request`. Job `test-backend` :
+
+1. `actions/checkout@v4` : récupère le code (avec `fetch-depth: 0`, historique complet requis par Sonar).
+2. `actions/setup-java@v4` : installe le JDK 21 (Temurin).
+3. `mvn clean verify --file ./simple-api/pom.xml` : nettoie, compile, lance les tests unitaires et d'intégration.
+4. Analyse SonarCloud avec `org.sonarsource.scanner.maven:sonar-maven-plugin:sonar` (clés de projet et d'organisation passées en paramètres, token via le secret `SONAR_TOKEN`).
+
+Le raccourci `sonar:sonar` du sujet ne fonctionnait pas sur ce projet (erreur `No plugin found for prefix 'sonar'`) : j'ai utilisé le nom complet du plugin.
+
+### `cd.yml` : livraison continue (CD)
+
+Déclenché avec `on: workflow_run` quand le workflow `CI devops 2025` se termine sur `main`. Le job `build-and-push-docker-image` ne s'exécute que si le CI a réussi (`conclusion == 'success'`) :
+
+1. Checkout du commit exact qui a passé les tests (`head_sha`).
+2. Connexion à Docker Hub avec les secrets `DOCKERHUB_USERNAME` et `DOCKERHUB_TOKEN`.
+3. Build et push des 3 images : `tp-devops-simple-api`, `tp-devops-database`, `tp-devops-httpd`.
+
+### Secrets utilisés (Settings > Secrets and variables > Actions)
+
+- `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`
+- `SONAR_TOKEN`
+
+## Réponses aux questions
+
+**2-1 Que sont les testcontainers ?**
+Ce sont des bibliothèques Java qui lancent des conteneurs Docker temporaires pendant les tests. Ici, un conteneur PostgreSQL est démarré pour les tests d'intégration, puis supprimé à la fin. Les tests tournent ainsi sur une vraie base de données, sans installation manuelle.
+
+**2-2 Pourquoi utiliser des variables sécurisées (secrets) ?**
+Pour ne jamais écrire d'identifiants (Docker Hub, SonarCloud) en clair dans le code, surtout sur un dépôt public. Les secrets sont chiffrés par GitHub et masqués dans les logs (affichés en `***`).
+
+**2-3 Pourquoi `needs: test-backend` sur le job de build/push ?**
+Sans `needs`, les jobs s'exécutent en parallèle : on pourrait publier une image alors que les tests échouent. Avec `needs` (puis `workflow_run` après la séparation des pipelines), l'image n'est construite et publiée que si le code compile et que les tests passent.
+
+**2-4 Pourquoi pousser les images Docker ?**
+Pour les stocker et les versionner dans un registre (Docker Hub), afin que les autres membres de l'équipe, d'autres machines ou des serveurs de déploiement puissent les récupérer avec `docker pull`. C'est la base de la livraison continue.
+
+## Résultats
+
+- CI : le workflow `CI devops 2025` passe au vert (onglet Actions).
+- Quality Gate SonarCloud : analyse effectuée à chaque push (projet `Diarra-blip_tp_devops`).
+- CD : le workflow `CD devops 2025` se déclenche après le succès du CI et publie les 3 images sur Docker Hub.
