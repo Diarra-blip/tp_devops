@@ -41,3 +41,5 @@ Les services communiquent via un réseau bridge personnalisé (`app-network`) et
 
 ## 1-10. Intérêt d'un dépôt en ligne pour les images
 Stocker les images sur un registre en ligne (comme Docker Hub) facilite le partage au sein d'une équipe, permet un déploiement rapide sur d'autres environnements (serveurs de test, cloud ou production) et assure le suivi versionné des différentes versions de l'application.
+
+This project is now mine
